@@ -1,6 +1,7 @@
 import bodyParser from "body-parser";
 import express, { Express } from "express";
 import initialDB from "../databases/postgres.database";
+import router from "./routes/route";
 export default class App {
   private app: Express;
 
@@ -20,6 +21,12 @@ export default class App {
   private async bootstrap(): Promise<void> {
     this.app.use(bodyParser.json());
     this.app.use(bodyParser.urlencoded({ extended: true }));
+
+    // route
+    this.app.use(router)
+    this.app.use((req, res, next) => {
+      next();
+    });
 
     // Connect to db
     await initialDB();
