@@ -1,6 +1,8 @@
 import { Connection, connect, Channel } from "amqplib";
 import { CreateEx, PublishEx } from "common/interfaces/rabbit";
 import { pull, find, once } from "lodash";
+import customConsumer from "./consumer";
+// import { Buffer } from "buffer";
 
 export default class MessageBroker {
   private static instance: MessageBroker;
@@ -8,9 +10,11 @@ export default class MessageBroker {
   private channel: Channel;
   private queues: any;
   private exchange: string;
+  private consumer: any;
 
   private constructor() {
     this.queues = {};
+    
     this.init();
   }
 
@@ -20,13 +24,14 @@ export default class MessageBroker {
       port: 5672,
     });
     this.channel = await this.connection.createChannel();
+    this.consumer = await customConsumer();
   }
 
-  async createEx({ name, type, durable }: CreateEx): Promise<this> {
+  async createEx({ name, type, durable }: CreateEx): Promise<void> {
     if (!this.connection) await this.init();
     await this.channel.assertExchange(name, type, { durable });
     this.exchange = name;
-    return this;
+    // return this;
   }
 
   /**
@@ -34,18 +39,22 @@ export default class MessageBroker {
    * @param {Object} - object defining exchange and routingKey
    * @param {Object} msg Message as Buffer
    */
-  async publish({ ex, routingKey }: PublishEx, message: string): Promise<this> {
+  async publish({ ex, routingKey }: PublishEx, message: Buffer): Promise<void> {
     const queue = `${ex}.${routingKey}`;
     await this.channel.assertQueue(queue, { durable: true });
-    this.channel.bindQueue(queue, ex, routingKey);
-    return this;
+    await this.channel.bindQueue(queue, this.exchange, routingKey);
+    const result = this.channel.publish( ex, routingKey, Buffer.from(message));
   }
 
   /**
    * @param {Object} - object defining queue name and bindingKey
    * @param {Function} handler Handler that will be invoked with given message and acknowledge function (msg, ack)
    */
-  async subscribe({ exchange, bindingKey }: { exchange: any, bindingKey: any }, handler: any) {
+  async subscribe(
+    { exchange, bindingKey }: { exchange: string; bindingKey: string },
+    handler: any
+  ) {
+    console.log("subcrice");
     const queue = `${exchange}.${bindingKey}`;
     if (!this.connection) {
       await this.init();

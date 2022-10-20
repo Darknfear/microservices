@@ -3,9 +3,8 @@ import { EXCHANGE } from "../../common/constants/rabbitmq.constants";
 
 export const producer = async (
   instance: MessageBroker,
-  { message, routingKey }: { message: any; routingKey: any }
+  { message, routingKey }: { message: Buffer; routingKey: string }
 ) => {
-  console.log(message, routingKey);
   try {
     await instance.createEx({ name: EXCHANGE, type: "direct" });
     await instance.publish({ ex: EXCHANGE, routingKey}, message);
